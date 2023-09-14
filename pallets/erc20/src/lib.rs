@@ -2,23 +2,29 @@
 
 use frame_support::{pallet_prelude::DispatchResult, sp_runtime::traits::StaticLookup};
 use frame_support::dispatch::Vec;
-use frame_support::sp_runtime;
+use frame_support::sp_runtime; // IMPORTANT! this import is overkill, can't fix atm
 
 /// ERC20 Pallet
-pub use pallet::*;
+pub use pallet::*; //It imports all the public items from the pallet module and makes them available in the current scope.
 
-#[cfg(test)]
+#[cfg(test)] //complile only when running tests
 mod mock;
 
-#[cfg(test)]
+#[cfg(test)] //complile only when running tests
 mod tests;
 
-#[cfg(feature = "runtime-benchmarks")]
-mod benchmarking;
+#[cfg(feature = "runtime-benchmarks")] //only when benchmarking?
+mod benchmarking; // IMPORTANT! learn what benchmarking and weights are
 pub mod weights;
 pub use weights::*;
 
-type AccountIdLookupOf<T> = <<T as frame_system::Config>::Lookup as StaticLookup>::Source;
+// Generic type T must implement (), frame_system::Config trait (collection of methods, basically an interface)
+// This trait has an associated type Lookup
+// This type must implement StaticLookup
+// StaticLookup has a type Source
+// This is what AccountIdLookupOf is
+// lookup returns either the target or lookup error
+type AccountIdLookupOf<T> = <<T as frame_system::Config>::Lookup as StaticLookup>::Source; 
 
 #[frame_support::pallet]
 pub mod pallet {
@@ -43,15 +49,16 @@ pub mod pallet {
 
 	// STORAGE
 
+	//The pub(super) modifier means that the type is accessible within the current module and its super modules, but not outside of them.
 	/// minters
 	#[pallet::storage]
 	#[pallet::getter(fn minters)]
-	pub(super) type Minters<T: Config> = StorageMap<
-		_,
+	pub(super) type Minters<T: Config> = StorageMap< //T must implement Config trait
+		_, // this is prefix, what does it mean?
 		Blake2_128Concat,
-		T::AccountId, //Blake2_128Concat is a hashing function? Зачем она?
+		T::AccountId,
 		(),
-		ValueQuery, // ValueQuery возвращает значение либо дефолт валуе вроде?
+		ValueQuery, // return default value
 	>;
 
 	/// total supply
@@ -65,7 +72,7 @@ pub mod pallet {
 	pub(super) type Balances<T: Config> = StorageMap<
 		_,
 		Blake2_128Concat,
-		T::AccountId, //Blake2_128Concat is a hashing function? Зачем она?
+		T::AccountId, 
 		u64,
 		ValueQuery, // ValueQuery возвращает значение либо дефолт валуе вроде?
 	>;
@@ -82,9 +89,9 @@ pub mod pallet {
 		u64,
 		ValueQuery,
 	>;
-	// learn the difference between T::AccountId and AccountId<T>
+
 	#[pallet::genesis_config]
-	#[derive(frame_support::DefaultNoBound)]
+	#[derive(frame_support::DefaultNoBound)] // make empty minters by default
 	pub struct GenesisConfig<T: Config> {
 		pub minters: Vec<T::AccountId>,
 	}
@@ -100,7 +107,6 @@ pub mod pallet {
 	}
 
 	// EVENTS
-	// https://docs.substrate.io/main-docs/build/events-errors/
 	#[pallet::event]
 	#[pallet::generate_deposit(pub(super) fn deposit_event)]
 	pub enum Event<T: Config> {
@@ -128,8 +134,8 @@ pub mod pallet {
 			to: AccountIdLookupOf<T>,
 			value: u64,
 		) -> DispatchResult {
-			let sender = ensure_signed(origin)?; //msg.sender
-			let to = T::Lookup::lookup(to)?;
+			let sender = ensure_signed(origin)?; //msg.sender, checks that the tx is signed
+			let to = T::Lookup::lookup(to)?; // IMPORTANT! what does lookup do?
 			Self::_transfer(sender, to, value)?;
 			Ok(())
 		}
@@ -142,10 +148,10 @@ pub mod pallet {
 			to: AccountIdLookupOf<T>,
 			value: u64,
 		) -> DispatchResult {
-			let spender = ensure_signed(origin)?; //msg.sender
+			let spender = ensure_signed(origin)?;
 			let from = T::Lookup::lookup(from)?;
 			let to = T::Lookup::lookup(to)?;
-			Self::_spend_allowance(from.clone(), spender, value)?; //clone or &?
+			Self::_spend_allowance(from.clone(), spender, value)?; // IMPORTANT! is cloning accoundid ok? Sounds expensive
 			Self::_transfer(from, to, value)?;
 			Ok(())
 		}
@@ -157,7 +163,7 @@ pub mod pallet {
 			spender: AccountIdLookupOf<T>,
 			value: u64,
 		) -> DispatchResult {
-			let owner = ensure_signed(origin)?; //msg.sender
+			let owner = ensure_signed(origin)?; 
 			let spender = T::Lookup::lookup(spender)?;
 			Self::_approve(owner, spender, value)?;
 			Ok(())
@@ -181,45 +187,20 @@ pub mod pallet {
 			Self::_burn(_who, value)?;
 			Ok(())
 		}
-
-		/// An example dispatchable that may throw a custom error.
-		#[pallet::call_index(5)]
-		#[pallet::weight(T::WeightInfo::cause_error())]
-		pub fn cause_error(origin: OriginFor<T>) -> DispatchResult {
-			let _who = ensure_signed(origin)?;
-
-			// // Read a value from storage.
-			// match <Something<T>>::get() {
-			// 	// Return an error if the value has not been set.
-			// 	None => return Err(Error::<T>::NoneValue.into()),
-			// 	Some(old) => {
-			// 		// Increment the value read from storage; will error in the event of overflow.
-			// 		let new = old.checked_add(1).ok_or(Error::<T>::StorageOverflow)?;
-			// 		// Update the value in storage with the incremented result.
-			// 		<Something<T>>::put(new);
-			// 		Ok(())
-			// 	},
-			// }
-			Ok(())
-		}
 	}
 }
 
+//internal functions
 impl<T: Config> Pallet<T> {
 	pub fn _transfer(from: T::AccountId, to: T::AccountId, value: u64) -> DispatchResult {
 		//another return type?
 		//also rename internal functions somehow
-		// check if accounts exist I guess? stole it from official repo
 
-		//rewrite with match some
-		let new_balance_from = Balances::<T>::get(from.clone()).checked_sub(value);
-		let new_balance_to = Balances::<T>::get(to.clone()).checked_add(value);
+		let new_balance_from = Balances::<T>::get(from.clone()).checked_sub(value).ok_or(Error::<T>::StorageOverflow)?;
+		let new_balance_to = Balances::<T>::get(to.clone()).checked_add(value).ok_or(Error::<T>::StorageOverflow)?;
 
-		if new_balance_from == None || new_balance_to == None {
-			return Err(Error::<T>::StorageOverflow.into())
-		}
-		Balances::<T>::insert(from.clone(), new_balance_from.unwrap());
-		Balances::<T>::insert(to.clone(), new_balance_to.unwrap());
+		Balances::<T>::insert(from.clone(), new_balance_from); 
+		Balances::<T>::insert(to.clone(), new_balance_to);
 		Self::deposit_event(Event::<T>::Transfer { from, to, value });
 		Ok(())
 	}
@@ -228,12 +209,9 @@ impl<T: Config> Pallet<T> {
 		let current_allowance = Allowances::<T>::get(from.clone(), to.clone());
 
 		if current_allowance != u64::MAX {
-			let result = current_allowance.checked_sub(value);
-			if result == None {
-				return Err(Error::<T>::StorageOverflow.into())
-			}
+			let result = current_allowance.checked_sub(value).ok_or(Error::<T>::StorageOverflow)?;
+			Self::_approve(from, to, result)?; 
 		}
-		Self::_approve(from, to, current_allowance - value)?; // what does question mark mean?
 		Ok(())
 	}
 
@@ -245,21 +223,15 @@ impl<T: Config> Pallet<T> {
 
 	pub fn _mint(to: T::AccountId, value: u64) -> DispatchResult {
 		TotalSupply::<T>::put(value.clone());
-		let new_balance = Balances::<T>::get(to.clone()).checked_add(value);
-		if new_balance == None {
-			return Err(Error::<T>::StorageOverflow.into())
-		};
-		Balances::<T>::insert(to, new_balance.unwrap());
+		let new_balance = Balances::<T>::get(to.clone()).checked_add(value).ok_or(Error::<T>::StorageOverflow)?;
+		Balances::<T>::insert(to, new_balance);
 		Ok(())
 	}
 
 	pub fn _burn(to: T::AccountId, value: u64) -> DispatchResult {
 		TotalSupply::<T>::put(value.clone());
-		let new_balance = Balances::<T>::get(to.clone()).checked_sub(value);
-		if new_balance == None {
-			return Err(Error::<T>::StorageOverflow.into())
-		};
-		Balances::<T>::insert(to, new_balance.unwrap());
+		let new_balance = Balances::<T>::get(to.clone()).checked_sub(value).ok_or(Error::<T>::StorageOverflow)?;
+		Balances::<T>::insert(to, new_balance);
 		Ok(())
 	}
 }
