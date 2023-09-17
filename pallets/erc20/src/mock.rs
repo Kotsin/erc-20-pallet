@@ -13,7 +13,7 @@ frame_support::construct_runtime!(
 	pub enum Test
 	{
 		System: frame_system,
-		TemplateModule: pallet_template,
+		ERC20Module: pallet_template,
 	}
 );
 
@@ -52,4 +52,32 @@ impl pallet_template::Config for Test {
 // Build genesis storage according to the mock runtime.
 pub fn new_test_ext() -> sp_io::TestExternalities {
 	frame_system::GenesisConfig::<Test>::default().build_storage().unwrap().into()
+}
+
+pub struct ExtBuilder {
+	minters: Vec<u64>,
+}
+
+impl ExtBuilder {
+	pub fn build(self) -> sp_io::TestExternalities {
+		let mut t = frame_system::GenesisConfig::<Test>::default().build_storage().unwrap();
+		crate::GenesisConfig::<Test> { minters: vec![(1)] }
+			.assimilate_storage(&mut t)
+			.unwrap();
+
+		let mut ext = sp_io::TestExternalities::new(t);
+		ext.execute_with(|| System::set_block_number(1));
+		ext
+	}
+
+	pub fn build_and_execute(self, test: impl FnOnce() -> ()) {
+		let mut ext = self.build();
+		ext.execute_with(test);
+	}
+}
+
+impl Default for ExtBuilder {
+	fn default() -> Self {
+		Self { minters: vec![1] }
+	}
 }

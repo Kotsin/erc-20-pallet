@@ -74,7 +74,7 @@ pub mod pallet {
 		Blake2_128Concat,
 		T::AccountId, 
 		u64,
-		ValueQuery, // ValueQuery возвращает значение либо дефолт валуе вроде?
+		ValueQuery, 
 	>;
 
 	/// allowances
@@ -196,7 +196,7 @@ impl<T: Config> Pallet<T> {
 		//another return type?
 		//also rename internal functions somehow
 
-		let new_balance_from = Balances::<T>::get(from.clone()).checked_sub(value).ok_or(Error::<T>::StorageOverflow)?;
+		let new_balance_from = Balances::<T>::get(from.clone()).checked_sub(value).ok_or(Error::<T>::ERC20InsufficientBalance)?;
 		let new_balance_to = Balances::<T>::get(to.clone()).checked_add(value).ok_or(Error::<T>::StorageOverflow)?;
 
 		Balances::<T>::insert(from.clone(), new_balance_from); 
@@ -209,7 +209,7 @@ impl<T: Config> Pallet<T> {
 		let current_allowance = Allowances::<T>::get(from.clone(), to.clone());
 
 		if current_allowance != u64::MAX {
-			let result = current_allowance.checked_sub(value).ok_or(Error::<T>::StorageOverflow)?;
+			let result = current_allowance.checked_sub(value).ok_or(Error::<T>::ERC20InsufficientAllowance)?;
 			Self::_approve(from, to, result)?; 
 		}
 		Ok(())
@@ -230,7 +230,7 @@ impl<T: Config> Pallet<T> {
 
 	pub fn _burn(to: T::AccountId, value: u64) -> DispatchResult {
 		TotalSupply::<T>::put(value.clone());
-		let new_balance = Balances::<T>::get(to.clone()).checked_sub(value).ok_or(Error::<T>::StorageOverflow)?;
+		let new_balance = Balances::<T>::get(to.clone()).checked_sub(value).ok_or(Error::<T>::ERC20InsufficientBalance)?;
 		Balances::<T>::insert(to, new_balance);
 		Ok(())
 	}
