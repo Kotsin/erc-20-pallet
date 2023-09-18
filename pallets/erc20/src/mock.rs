@@ -61,7 +61,7 @@ pub struct ExtBuilder {
 impl ExtBuilder {
 	pub fn build(self) -> sp_io::TestExternalities {
 		let mut t = frame_system::GenesisConfig::<Test>::default().build_storage().unwrap();
-		crate::GenesisConfig::<Test> { minters: vec![(1)] }
+		crate::GenesisConfig::<Test> { minters: self.minters }
 			.assimilate_storage(&mut t)
 			.unwrap();
 
