@@ -13,17 +13,11 @@ mod mock;
 #[cfg(test)] //complile only when running tests
 mod tests;
 
-#[cfg(feature = "runtime-benchmarks")] //only when benchmarking?
-mod benchmarking; // IMPORTANT! learn what benchmarking and weights are
+pub mod benchmarking;
 pub mod weights;
 pub use weights::*;
 
-// Generic type T must implement (), frame_system::Config trait (collection of methods, basically an interface)
-// This trait has an associated type Lookup
-// This type must implement StaticLookup
-// StaticLookup has a type Source
-// This is what AccountIdLookupOf is
-// lookup returns either the target or lookup error
+/// A type alias for the account ID type used in the dispatchable functions of this pallet.
 type AccountIdLookupOf<T> = <<T as frame_system::Config>::Lookup as StaticLookup>::Source; 
 
 #[frame_support::pallet]
@@ -151,7 +145,7 @@ pub mod pallet {
 			let spender = ensure_signed(origin)?;
 			let from = T::Lookup::lookup(from)?;
 			let to = T::Lookup::lookup(to)?;
-			Self::_spend_allowance(from.clone(), spender, value)?; // IMPORTANT! is cloning accoundid ok? Sounds expensive
+			Self::_spend_allowance(from.clone(), spender, value)?;
 			Self::_transfer(from, to, value)?;
 			Ok(())
 		}
@@ -165,7 +159,7 @@ pub mod pallet {
 		) -> DispatchResult {
 			let owner = ensure_signed(origin)?; 
 			let spender = T::Lookup::lookup(spender)?;
-			Self::_approve(owner, spender, value)?;
+			Self::_approve(owner, spender, value);
 			Ok(())
 		}
 
@@ -191,10 +185,9 @@ pub mod pallet {
 }
 
 //internal functions
+//will keep naming according too erc20 in solidity, which is actually wrong
 impl<T: Config> Pallet<T> {
-	pub fn _transfer(from: T::AccountId, to: T::AccountId, value: u64) -> DispatchResult {
-		//another return type?
-		//also rename internal functions somehow
+	pub fn _transfer(from: T::AccountId, to: T::AccountId, value: u64) -> Result<(), Error<T>> {
 
 		let new_balance_from = Balances::<T>::get(from.clone()).checked_sub(value).ok_or(Error::<T>::ERC20InsufficientBalance)?;
 		let new_balance_to = Balances::<T>::get(to.clone()).checked_add(value).ok_or(Error::<T>::StorageOverflow)?;
@@ -205,30 +198,29 @@ impl<T: Config> Pallet<T> {
 		Ok(())
 	}
 
-	pub fn _spend_allowance(from: T::AccountId, to: T::AccountId, value: u64) -> DispatchResult {
+	pub fn _spend_allowance(from: T::AccountId, to: T::AccountId, value: u64) -> Result<(), Error<T>> {
 		let current_allowance = Allowances::<T>::get(from.clone(), to.clone());
 
 		if current_allowance != u64::MAX {
 			let result = current_allowance.checked_sub(value).ok_or(Error::<T>::ERC20InsufficientAllowance)?;
-			Self::_approve(from, to, result)?; 
+			Self::_approve(from, to, result); 
 		}
 		Ok(())
 	}
 
-	pub fn _approve(owner: T::AccountId, spender: T::AccountId, value: u64) -> DispatchResult {
+	pub fn _approve(owner: T::AccountId, spender: T::AccountId, value: u64) {
 		Allowances::<T>::insert(owner.clone(), spender.clone(), value);
 		Self::deposit_event(Event::<T>::Approval { owner, spender, value });
-		Ok(())
 	}
 
-	pub fn _mint(to: T::AccountId, value: u64) -> DispatchResult {
+	pub fn _mint(to: T::AccountId, value: u64) -> Result<(), Error<T>>{
 		TotalSupply::<T>::put(value.clone());
 		let new_balance = Balances::<T>::get(to.clone()).checked_add(value).ok_or(Error::<T>::StorageOverflow)?;
 		Balances::<T>::insert(to, new_balance);
 		Ok(())
 	}
 
-	pub fn _burn(to: T::AccountId, value: u64) -> DispatchResult {
+	pub fn _burn(to: T::AccountId, value: u64) -> Result<(), Error<T>> {
 		TotalSupply::<T>::put(value.clone());
 		let new_balance = Balances::<T>::get(to.clone()).checked_sub(value).ok_or(Error::<T>::ERC20InsufficientBalance)?;
 		Balances::<T>::insert(to, new_balance);
