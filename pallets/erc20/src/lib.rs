@@ -1,16 +1,16 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
-use frame_support::{pallet_prelude::DispatchResult, sp_runtime::traits::StaticLookup};
-use frame_support::dispatch::Vec;
-use frame_support::sp_runtime; // IMPORTANT! this import is overkill, can't fix atm
+use frame_support::{
+	dispatch::Vec, pallet_prelude::DispatchResult, sp_runtime, sp_runtime::traits::StaticLookup,
+};
 
 /// ERC20 Pallet
-pub use pallet::*; 
+pub use pallet::*;
 
-#[cfg(test)] 
+#[cfg(test)]
 mod mock;
 
-#[cfg(test)] 
+#[cfg(test)]
 mod tests;
 
 pub mod benchmarking;
@@ -18,7 +18,7 @@ pub mod weights;
 pub use weights::*;
 
 /// A type alias for the account ID type used in the dispatchable functions of this pallet.
-type AccountIdLookupOf<T> = <<T as frame_system::Config>::Lookup as StaticLookup>::Source; 
+type AccountIdLookupOf<T> = <<T as frame_system::Config>::Lookup as StaticLookup>::Source;
 
 #[frame_support::pallet]
 pub mod pallet {
@@ -47,7 +47,7 @@ pub mod pallet {
 	#[pallet::storage]
 	#[pallet::getter(fn minters)]
 	pub(super) type Minters<T: Config> = StorageMap<
-		_, 
+		_,
 		Blake2_128Concat,
 		T::AccountId,
 		(),
@@ -62,13 +62,8 @@ pub mod pallet {
 	/// balance
 	#[pallet::storage]
 	#[pallet::getter(fn balance_of)]
-	pub(super) type Balances<T: Config> = StorageMap<
-		_,
-		Blake2_128Concat,
-		T::AccountId, 
-		u64,
-		ValueQuery, 
-	>;
+	pub(super) type Balances<T: Config> =
+		StorageMap<_, Blake2_128Concat, T::AccountId, u64, ValueQuery>;
 
 	/// allowances
 	#[pallet::storage]
@@ -127,8 +122,8 @@ pub mod pallet {
 			to: AccountIdLookupOf<T>,
 			value: u64,
 		) -> DispatchResult {
-			let sender = ensure_signed(origin)?; 
-			let to = T::Lookup::lookup(to)?; 
+			let sender = ensure_signed(origin)?;
+			let to = T::Lookup::lookup(to)?;
 			Self::_transfer(sender, to, value)?;
 			Ok(())
 		}
@@ -156,7 +151,7 @@ pub mod pallet {
 			spender: AccountIdLookupOf<T>,
 			value: u64,
 		) -> DispatchResult {
-			let owner = ensure_signed(origin)?; 
+			let owner = ensure_signed(origin)?;
 			let spender = T::Lookup::lookup(spender)?;
 			Self::_approve(owner, spender, value);
 			Ok(())
@@ -187,22 +182,31 @@ pub mod pallet {
 //will keep naming according too erc20 in solidity, which is actually wrong
 impl<T: Config> Pallet<T> {
 	pub fn _transfer(from: T::AccountId, to: T::AccountId, value: u64) -> Result<(), Error<T>> {
+		let new_balance_from = Balances::<T>::get(from.clone())
+			.checked_sub(value)
+			.ok_or(Error::<T>::ERC20InsufficientBalance)?;
+		let new_balance_to = Balances::<T>::get(to.clone())
+			.checked_add(value)
+			.ok_or(Error::<T>::StorageOverflow)?;
 
-		let new_balance_from = Balances::<T>::get(from.clone()).checked_sub(value).ok_or(Error::<T>::ERC20InsufficientBalance)?;
-		let new_balance_to = Balances::<T>::get(to.clone()).checked_add(value).ok_or(Error::<T>::StorageOverflow)?;
-
-		Balances::<T>::insert(from.clone(), new_balance_from); 
+		Balances::<T>::insert(from.clone(), new_balance_from);
 		Balances::<T>::insert(to.clone(), new_balance_to);
 		Self::deposit_event(Event::<T>::Transfer { from, to, value });
 		Ok(())
 	}
 
-	pub fn _spend_allowance(from: T::AccountId, to: T::AccountId, value: u64) -> Result<(), Error<T>> {
+	pub fn _spend_allowance(
+		from: T::AccountId,
+		to: T::AccountId,
+		value: u64,
+	) -> Result<(), Error<T>> {
 		let current_allowance = Allowances::<T>::get(from.clone(), to.clone());
 
 		if current_allowance != u64::MAX {
-			let result = current_allowance.checked_sub(value).ok_or(Error::<T>::ERC20InsufficientAllowance)?;
-			Self::_approve(from, to, result); 
+			let result = current_allowance
+				.checked_sub(value)
+				.ok_or(Error::<T>::ERC20InsufficientAllowance)?;
+			Self::_approve(from, to, result);
 		}
 		Ok(())
 	}
@@ -212,16 +216,20 @@ impl<T: Config> Pallet<T> {
 		Self::deposit_event(Event::<T>::Approval { owner, spender, value });
 	}
 
-	pub fn _mint(to: T::AccountId, value: u64) -> Result<(), Error<T>>{
+	pub fn _mint(to: T::AccountId, value: u64) -> Result<(), Error<T>> {
 		TotalSupply::<T>::put(value.clone());
-		let new_balance = Balances::<T>::get(to.clone()).checked_add(value).ok_or(Error::<T>::StorageOverflow)?;
+		let new_balance = Balances::<T>::get(to.clone())
+			.checked_add(value)
+			.ok_or(Error::<T>::StorageOverflow)?;
 		Balances::<T>::insert(to, new_balance);
 		Ok(())
 	}
 
 	pub fn _burn(to: T::AccountId, value: u64) -> Result<(), Error<T>> {
 		TotalSupply::<T>::put(value.clone());
-		let new_balance = Balances::<T>::get(to.clone()).checked_sub(value).ok_or(Error::<T>::ERC20InsufficientBalance)?;
+		let new_balance = Balances::<T>::get(to.clone())
+			.checked_sub(value)
+			.ok_or(Error::<T>::ERC20InsufficientBalance)?;
 		Balances::<T>::insert(to, new_balance);
 		Ok(())
 	}

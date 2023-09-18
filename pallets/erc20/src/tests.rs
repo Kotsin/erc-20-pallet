@@ -74,7 +74,8 @@ fn transfer_from_low_allowance() {
 		assert_ok!(ERC20Module::mint(RuntimeOrigin::signed(1), 43));
 		assert_ok!(ERC20Module::approve(RuntimeOrigin::signed(1), 2, 42));
 		assert_noop!(
-			ERC20Module::transfer_from(RuntimeOrigin::signed(2), 1, 3, 43), Error::<Test>::ERC20InsufficientAllowance
+			ERC20Module::transfer_from(RuntimeOrigin::signed(2), 1, 3, 43),
+			Error::<Test>::ERC20InsufficientAllowance
 		);
 	})
 }
@@ -86,7 +87,8 @@ fn transfer_from_low_balance() {
 		assert_ok!(ERC20Module::mint(RuntimeOrigin::signed(1), 42));
 		assert_ok!(ERC20Module::approve(RuntimeOrigin::signed(1), 2, 10000));
 		assert_noop!(
-			ERC20Module::transfer_from(RuntimeOrigin::signed(2), 1, 3, 10000), Error::<Test>::ERC20InsufficientBalance
+			ERC20Module::transfer_from(RuntimeOrigin::signed(2), 1, 3, 10000),
+			Error::<Test>::ERC20InsufficientBalance
 		);
 	})
 }
@@ -104,7 +106,10 @@ fn burn_ok() {
 fn burn_low_balance() {
 	ExtBuilder::default().build_and_execute(|| {
 		assert_ok!(ERC20Module::mint(RuntimeOrigin::signed(1), 42));
-		assert_noop!(ERC20Module::burn(RuntimeOrigin::signed(1), 43), Error::<Test>::ERC20InsufficientBalance);
+		assert_noop!(
+			ERC20Module::burn(RuntimeOrigin::signed(1), 43),
+			Error::<Test>::ERC20InsufficientBalance
+		);
 		assert_eq!(ERC20Module::balance_of(&1), 42);
 	})
 }
