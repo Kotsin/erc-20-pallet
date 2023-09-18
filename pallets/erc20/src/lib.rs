@@ -135,7 +135,7 @@ pub mod pallet {
 		}
 
 		#[pallet::call_index(1)]
-		#[pallet::weight(T::WeightInfo::transfer())]
+		#[pallet::weight(T::WeightInfo::transfer_from())]
 		pub fn transfer_from(
 			origin: OriginFor<T>,
 			from: AccountIdLookupOf<T>,
@@ -151,7 +151,7 @@ pub mod pallet {
 		}
 
 		#[pallet::call_index(2)]
-		#[pallet::weight(T::WeightInfo::transfer())]
+		#[pallet::weight(T::WeightInfo::approve())]
 		pub fn approve(
 			origin: OriginFor<T>,
 			spender: AccountIdLookupOf<T>,
@@ -164,7 +164,7 @@ pub mod pallet {
 		}
 
 		#[pallet::call_index(3)]
-		#[pallet::weight(T::WeightInfo::transfer())]
+		#[pallet::weight(T::WeightInfo::mint())]
 		pub fn mint(origin: OriginFor<T>, value: u64) -> DispatchResult {
 			let _who = ensure_signed(origin)?;
 			if !Minters::<T>::contains_key(_who.clone()) {
@@ -175,7 +175,7 @@ pub mod pallet {
 		}
 
 		#[pallet::call_index(4)]
-		#[pallet::weight(T::WeightInfo::transfer())]
+		#[pallet::weight(T::WeightInfo::burn())]
 		pub fn burn(origin: OriginFor<T>, value: u64) -> DispatchResult {
 			let _who = ensure_signed(origin)?;
 			Self::_burn(_who, value)?;
