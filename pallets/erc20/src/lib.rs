@@ -5,12 +5,12 @@ use frame_support::dispatch::Vec;
 use frame_support::sp_runtime; // IMPORTANT! this import is overkill, can't fix atm
 
 /// ERC20 Pallet
-pub use pallet::*; //It imports all the public items from the pallet module and makes them available in the current scope.
+pub use pallet::*; 
 
-#[cfg(test)] //complile only when running tests
+#[cfg(test)] 
 mod mock;
 
-#[cfg(test)] //complile only when running tests
+#[cfg(test)] 
 mod tests;
 
 pub mod benchmarking;
@@ -43,12 +43,11 @@ pub mod pallet {
 
 	// STORAGE
 
-	//The pub(super) modifier means that the type is accessible within the current module and its super modules, but not outside of them.
 	/// minters
 	#[pallet::storage]
 	#[pallet::getter(fn minters)]
-	pub(super) type Minters<T: Config> = StorageMap< //T must implement Config trait
-		_, // this is prefix, what does it mean?
+	pub(super) type Minters<T: Config> = StorageMap<
+		_, 
 		Blake2_128Concat,
 		T::AccountId,
 		(),
@@ -128,8 +127,8 @@ pub mod pallet {
 			to: AccountIdLookupOf<T>,
 			value: u64,
 		) -> DispatchResult {
-			let sender = ensure_signed(origin)?; //msg.sender, checks that the tx is signed
-			let to = T::Lookup::lookup(to)?; // IMPORTANT! what does lookup do?
+			let sender = ensure_signed(origin)?; 
+			let to = T::Lookup::lookup(to)?; 
 			Self::_transfer(sender, to, value)?;
 			Ok(())
 		}
